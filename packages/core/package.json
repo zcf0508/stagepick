@@ -1,0 +1,33 @@
+{
+  "name": "@stagepick/core",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Core library for stagepick: parse git diffs, select hunks and lines, build partial-staging patches",
+  "license": "MIT",
+  "keywords": [
+    "git",
+    "diff",
+    "staging",
+    "partial-staging",
+    "ai-agents"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "execa": "^9.5.2"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "stagepick",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Non-interactive git staging for AI agents and scripts: stage hunks or individual lines by stable content ids and file line numbers",
+  "license": "MIT",
+  "keywords": [
+    "git",
+    "staging",
+    "hunk",
+    "partial-staging",
+    "ai-agents",
+    "cli"
+  ],
+  "bin": {
+    "stagepick": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "@stagepick/core": "workspace:*",
+    "citty": "^0.1.6"
+  }
+}

@@ -1,0 +1,3 @@
+# Keep source files LF in the repo and on checkout, so fixtures and
+# snapshots behave identically on Windows, macOS and Linux.
+* text=auto eol=lf
