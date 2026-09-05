@@ -36,14 +36,13 @@ jobs:
 
       # core publishes first: the CLI's workspace:* dependency on it resolves
       # to the new version at pack time and must already exist in the registry.
+      # Publishing uses trusted publishing (OIDC) — no NPM_TOKEN secret needed.
       - name: Publish core to NPM
         run: |
           pnpm run build
           TARBALL=$(pnpm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)
           npm publish "$TARBALL" --access public
         working-directory: ./packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 
       - name: Publish CLI to NPM
         run: |
@@ -51,5 +50,3 @@ jobs:
           TARBALL=$(pnpm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)
           npm publish "$TARBALL" --access public
         working-directory: ./packages/cli
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
