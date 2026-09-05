@@ -160,6 +160,23 @@ All primitives are exported for custom pipelines: `parseDiff`, `parseSelector`,
 Inject your own `GitRunner` via `createStagepick({ git })` for tests or remote
 execution.
 
+## Agent skill
+
+A companion [Agent Skill](https://platform.claude.com/docs/en/agents-and-tools/agent-skills)
+lives at [`skills/stagepick/SKILL.md`](./skills/stagepick/SKILL.md). It teaches agents the
+list → select → stage → verify loop, the selector grammar, and the failure modes that matter
+(L-numbers vs file line numbers, id invalidation after partial staging, run atomicity).
+
+Point any skill-aware agent at the directory:
+
+```bash
+# Claude Code (user-level)
+cp -r skills/stagepick ~/.claude/skills/stagepick
+
+# or project-level, committed for the whole team
+cp -r skills/stagepick .claude/skills/stagepick
+```
+
 ## How it stays correct
 
 - New-side hunk anchors are **recomputed from the result patch**, never inherited
