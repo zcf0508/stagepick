@@ -2,6 +2,7 @@ import type { GitRunner } from './git.js'
 import type { ParsedDiff } from './parse.js'
 import type { Selector } from './selector.js'
 import process from 'node:process'
+import { PartialFailureError } from './errors.js'
 import { createGitRunner } from './git.js'
 import { parseDiff } from './parse.js'
 import { buildPatch } from './patch.js'
@@ -106,14 +107,31 @@ export function createStagepick(options: StagepickOptions = {}): Stagepick {
 
     const hunkCount = selections.reduce((n, s) => n + s.hunks.length, 0)
     if (hunkCount === 0 && directAdd.length === 0)
-      throw new SelectionError(reverse ? 'nothing to unstage' : 'nothing to stage')
+      throw new SelectionError(reverse ? 'nothing to unstage' : 'nothing to stage', 'nothing-to-stage')
 
     const patch = hunkCount > 0 ? buildPatch(diff, selections) : ''
     if (!dryRun) {
       if (patch)
         git.applyToIndex(patch, reverse)
-      if (directAdd.length > 0)
-        git.add(directAdd)
+      if (directAdd.length > 0) {
+        // Apply the failure-prone step first (above), then add untracked files one by
+        // one so a failure reports exactly what landed — partial success is explicit.
+        const added: string[] = []
+        try {
+          for (const path of directAdd) {
+            git.add([path])
+            added.push(path)
+          }
+        }
+        catch (cause) {
+          const remaining = directAdd.filter(p => !added.includes(p))
+          throw new PartialFailureError(
+            `${reverse ? 'unstage' : 'stage'} partially applied: the patch (${hunkCount} hunk(s)) is already in the index, and \`git add\` failed for: ${remaining.join(', ')}. Recover with \`git reset\` to undo the staged patch, or \`git add\` the remaining files manually.`,
+            { patchApplied: hunkCount > 0, addedUntracked: added, remainingUntracked: remaining },
+            cause,
+          )
+        }
+      }
     }
 
     return {

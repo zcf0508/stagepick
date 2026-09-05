@@ -1,3 +1,5 @@
+export { exitCodeOf, PartialFailureError, StagepickError, toJsonError } from './errors.js'
+export type { JsonError, PartialFailureDetails, StagepickErrorCode } from './errors.js'
 export { formatHuman, formatJson, toJsonModel } from './format.js'
 export type { JsonFile, JsonHunk, JsonModel } from './format.js'
 export { createGitRunner, GitError } from './git.js'

@@ -1,5 +1,6 @@
 import type { DiffLine, FileDiff, Hunk, ParsedDiff } from './parse.js'
 import type { Selector } from './selector.js'
+import { StagepickError } from './errors.js'
 import { changedLines } from './parse.js'
 
 /** One hunk with the subset of its changed lines selected (1-based changed-line indices). */
@@ -15,8 +16,16 @@ export interface FileSelection {
   hunks: HunkSelection[]
 }
 
-export class SelectionError extends Error {
+export class SelectionError extends StagepickError {
   override readonly name = 'SelectionError'
+
+  constructor(
+    message: string,
+    /** Machine-branchable kind; all selection failures are recoverable by re-listing. */
+    readonly reason: 'unknown-hunk' | 'unknown-path' | 'lines-not-matched' | 'changed-line-out-of-range' | 'nothing-to-stage',
+  ) {
+    super(message, reason, true)
+  }
 }
 
 /**
@@ -141,7 +150,7 @@ export function resolveSelectors(diff: ParsedDiff, selectors: Selector[]): FileS
     if (sel.kind === 'file') {
       const file = findFile(diff, sel.path)
       if (!file)
-        throw new SelectionError(`no changes found for path "${sel.path}"`)
+        throw new SelectionError(`no changes found for path "${sel.path}"`, 'unknown-path')
       // A file selector expands to "every hunk fully selected", so the emission
       // still recomputes counts and new-side anchors like any other selection.
       selectWholeFile(hunkMap, wholeFiles, file)
@@ -160,7 +169,7 @@ export function resolveSelectors(diff: ParsedDiff, selectors: Selector[]): FileS
             continue
           }
         }
-        throw new SelectionError(`no hunk matches id "${sel.id}"${sel.path ? ` in ${sel.path}` : ''} — re-run \`stagepick list\`; ids change when a hunk's own edited lines change. If "${sel.id}" is a file path, prefix it with ./`)
+        throw new SelectionError(`no hunk matches id "${sel.id}"${sel.path ? ` in ${sel.path}` : ''} — re-run \`stagepick list\`; ids change when a hunk's own edited lines change. If "${sel.id}" is a file path, prefix it with ./`, 'unknown-hunk')
       }
       // Identical edits in one file share a content id (same path, same +/- lines):
       // like hunkpick's @id, select them all. list --json reports idCount upfront.
@@ -170,7 +179,7 @@ export function resolveSelectors(diff: ParsedDiff, selectors: Selector[]): FileS
           const max = changedLines(hunk).length
           for (const n of sel.lines) {
             if (n < 1 || n > max)
-              throw new SelectionError(`changed line ${n} is out of range 1..${max} for hunk ${hunk.id} in ${file.path}`)
+              throw new SelectionError(`changed line ${n} is out of range 1..${max} for hunk ${hunk.id} in ${file.path}`, 'changed-line-out-of-range')
           }
         }
         addHunkSelection(hunkMap, file, hunk, indices)
@@ -181,9 +190,9 @@ export function resolveSelectors(diff: ParsedDiff, selectors: Selector[]): FileS
     // sel.kind === 'lines'
     const file = findFile(diff, sel.path)
     if (!file)
-      throw new SelectionError(`no changes found for path "${sel.path}"`)
+      throw new SelectionError(`no changes found for path "${sel.path}"`, 'unknown-path')
     if (file.status === 'binary')
-      throw new SelectionError(`"${sel.path}" is binary; stage it whole with \`stagepick stage ${sel.path}\``)
+      throw new SelectionError(`"${sel.path}" is binary; stage it whole with \`stagepick stage ${sel.path}\``, 'lines-not-matched')
     let matched = false
     for (const hunk of file.hunks) {
       for (const run of changeRuns(hunk)) {
@@ -196,7 +205,7 @@ export function resolveSelectors(diff: ParsedDiff, selectors: Selector[]): FileS
     }
     if (!matched) {
       const spec = sel.ranges.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(',')
-      throw new SelectionError(`lines ${spec} in "${sel.path}" do not touch any change — line numbers are new-file lines; check \`stagepick list --lines\``)
+      throw new SelectionError(`lines ${spec} in "${sel.path}" do not touch any change — line numbers are new-file lines; check \`stagepick list --lines\``, 'lines-not-matched')
     }
   }
 

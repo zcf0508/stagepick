@@ -1,4 +1,5 @@
 import { execaSync, ExecaSyncError } from 'execa'
+import { StagepickError } from './errors.js'
 
 /**
  * The only module that talks to git. All commands run via execa with no shell,
@@ -19,14 +20,14 @@ export interface GitRunner {
   untracked: () => string[]
 }
 
-export class GitError extends Error {
+export class GitError extends StagepickError {
   override readonly name = 'GitError'
   constructor(
     message: string,
     readonly stderr: string,
     readonly exitCode: number | null,
   ) {
-    super(message)
+    super(message, 'git-failed', false)
   }
 }
 

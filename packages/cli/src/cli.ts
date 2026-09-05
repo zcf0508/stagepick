@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 import type { StageResult } from '@stagepick/core'
 import process from 'node:process'
-import { createStagepick, formatHuman, formatJson, SelectionError, SelectorParseError } from '@stagepick/core'
+import { createStagepick, exitCodeOf, formatHuman, formatJson, StagepickError, toJsonError } from '@stagepick/core'
 import { defineCommand, runMain } from 'citty'
 
 const VERSION = '0.1.0'
 
-class UsageError extends Error {
+class UsageError extends StagepickError {
   override readonly name = 'UsageError'
+
+  constructor(message: string) {
+    super(message, 'usage', false)
+  }
 }
 
-function exitCodeOf(error: unknown): number {
-  if (error instanceof UsageError || error instanceof SelectorParseError || error instanceof SelectionError)
-    return 2
-  return 1
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-/** Run a command body, mapping known error types onto exit codes (2 = usage, 1 = git/internal). */
-function guard(fn: () => void): void {
+/** Run a command body, mapping typed errors onto JSON/plain output and documented exit codes. */
+function guard(fn: () => void, json: boolean): void {
   try {
     fn()
   }
   catch (error) {
-    process.stderr.write(`stagepick: ${messageOf(error)}\n`)
+    if (json) {
+      process.stderr.write(`${JSON.stringify(toJsonError(error))}\n`)
+    }
+    else {
+      const message = error instanceof Error ? error.message : String(error)
+      process.stderr.write(`stagepick: ${message}\n`)
+    }
     process.exitCode = exitCodeOf(error)
   }
 }
@@ -38,7 +38,23 @@ function printDryRun(result: StageResult): void {
     process.stdout.write(`# would git add -- ${path}\n`)
 }
 
-function printSummary(verb: 'staged' | 'unstaged', result: StageResult): void {
+function printResult(verb: 'staged' | 'unstaged', result: StageResult, json: boolean): void {
+  if (json) {
+    process.stdout.write(`${JSON.stringify({
+      ok: true,
+      action: verb,
+      hunks: result.hunks,
+      files: result.files,
+      addedUntracked: result.addedUntracked,
+      dryRun: result.dryRun,
+      ...(result.dryRun ? { patch: result.patch } : {}),
+    })}\n`)
+    return
+  }
+  if (result.dryRun) {
+    printDryRun(result)
+    return
+  }
   const parts = [`${verb} ${result.hunks} hunk(s) in ${result.files} file(s)`]
   if (result.addedUntracked.length > 0)
     parts.push(`${verb} ${result.addedUntracked.length} untracked file(s) whole: ${result.addedUntracked.join(', ')}`)
@@ -73,19 +89,22 @@ const list = defineCommand({
         return
       }
       process.stdout.write(args.json ? `${formatJson(diff)}\n` : `${formatHuman(diff, { lines: args.lines })}\n`)
-    })
+    }, args.json)
   },
 })
+
+const mutateArgs = {
+  ...sharedArgs,
+  dryRun: { type: 'boolean', description: 'Print the patch instead of applying it', default: false },
+  json: { type: 'boolean', description: 'Machine-readable result and error output', default: false },
+} as const
 
 const stage = defineCommand({
   meta: {
     name: 'stage',
     description: 'Stage selected hunks/lines into the index. Selectors: path | <id> | path#<id> | path:42-45,50 | <id>@L1,3-5 | path#<id>@L2',
   },
-  args: {
-    ...sharedArgs,
-    dryRun: { type: 'boolean', description: 'Print the patch instead of applying it', default: false },
-  },
+  args: mutateArgs,
   run({ args }) {
     guard(() => {
       const selectors = args._.map(String)
@@ -93,12 +112,8 @@ const stage = defineCommand({
         throw new UsageError('stage requires at least one selector (run `stagepick list --lines` to pick ids and lines)')
       const stagepick = createStagepick({ cwd: args.cwd })
       const result = stagepick.stage(selectors, { dryRun: args.dryRun })
-      if (args.dryRun) {
-        printDryRun(result)
-        return
-      }
-      printSummary('staged', result)
-    })
+      printResult('staged', result, args.json)
+    }, args.json)
   },
 })
 
@@ -107,10 +122,7 @@ const unstage = defineCommand({
     name: 'unstage',
     description: 'Remove selected hunks/lines from the index (reverse of stage; same selector grammar)',
   },
-  args: {
-    ...sharedArgs,
-    dryRun: { type: 'boolean', description: 'Print the reverse patch instead of applying it', default: false },
-  },
+  args: mutateArgs,
   run({ args }) {
     guard(() => {
       const selectors = args._.map(String)
@@ -118,12 +130,8 @@ const unstage = defineCommand({
         throw new UsageError('unstage requires at least one selector (run `stagepick list --staged` to pick ids and lines)')
       const stagepick = createStagepick({ cwd: args.cwd })
       const result = stagepick.unstage(selectors, { dryRun: args.dryRun })
-      if (args.dryRun) {
-        printDryRun(result)
-        return
-      }
-      printSummary('unstaged', result)
-    })
+      printResult('unstaged', result, args.json)
+    }, args.json)
   },
 })
 

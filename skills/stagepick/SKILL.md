@@ -67,11 +67,21 @@ Selector grammar (one per argument):
 
 ### Error recovery
 
-- Exit 2 (usage: unknown id, out-of-range L-number, nothing selected) →
+Errors are machine-branchable: with `--json`, failures print
+`{"error":{"code","message","retryable"}}` on stderr, and exit codes classify the
+failure — never parse the message text for control flow.
+
+- Exit 2 (usage: bad selector grammar, missing arguments) → fix the command line
+  and retry; do not re-list.
+- Exit 3 (invalid or stale selection: `unknown-hunk`, `unknown-path`,
+  `lines-not-matched`, `changed-line-out-of-range`, `nothing-to-stage`) →
   re-run `stagepick list --json` and rebuild selectors; ids may have changed.
 - Exit 1 (git rejected the patch) → the index is untouched (git apply is
   atomic). Re-list, widen the selection (whole run, whole hunk, whole file),
   and retry. Report persistent failures instead of hand-editing a patch.
+- Exit 4 (partial failure) → some writes already landed. The JSON error's
+  message says what; recover with `git reset` or finish the remaining
+  `git add` manually, then report what happened before continuing.
 - Never write or edit a patch by hand; never pipe `git diff` through a shell —
   stagepick exists precisely to avoid both failure modes.
 

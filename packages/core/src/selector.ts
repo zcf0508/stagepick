@@ -8,19 +8,21 @@
  *   deadbeef@L1,3-5         individual changed (+/-) lines of a hunk (numbering from `list --json`)
  *   path#deadbeef@L2        same, restricted to one file
  */
+import { StagepickError } from './errors.js'
+
 export type Selector
   = | { kind: 'file', path: string }
     | { kind: 'hunk', id: string, path: string | null }
     | { kind: 'lines', path: string, ranges: Array<[number, number]> }
     | { kind: 'hunkLines', id: string, path: string | null, lines: number[] }
 
-export class SelectorParseError extends Error {
+export class SelectorParseError extends StagepickError {
   override readonly name = 'SelectorParseError'
   constructor(
     message: string,
     readonly input: string,
   ) {
-    super(message)
+    super(message, 'usage', false)
   }
 }
 

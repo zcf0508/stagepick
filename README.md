@@ -134,8 +134,22 @@ Semantics worth knowing:
 | Code | Meaning |
 | --- | --- |
 | 0 | success |
-| 1 | git failed (e.g. patch does not apply; index untouched) |
-| 2 | usage error (bad selector, unknown id, nothing selected) |
+| 1 | git or internal failure (e.g. patch does not apply; index untouched) |
+| 2 | usage error (bad selector grammar, unknown flag, missing arguments) |
+| 3 | invalid or stale selection (unknown id, untouched lines, nothing selected) — recover by re-running `list` |
+| 4 | partial failure — some writes already landed; inspect before retrying |
+
+Errors carry machine-branchable codes, not just prose: with `--json`, failures are
+reported on stderr as a structured object, so agents never parse error text for
+control flow:
+
+```json
+{ "error": { "code": "unknown-hunk", "message": "no hunk matches id …", "retryable": true } }
+```
+
+Library callers get the same contract through typed errors:
+`StagepickError` (`code`, `retryable`), `PartialFailureError` (`completed` with
+`patchApplied` / `addedUntracked` / `remainingUntracked`), and `exitCodeOf()`.
 
 ## Library
 
