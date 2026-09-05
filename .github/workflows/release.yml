@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      id-token: write
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm i -g npm@latest
+
+      - run: npx changelogithub
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Setup
+        run: npm i -g pnpm@9
+
+      - name: Install Dependencies
+        run: pnpm i --frozen-lockfile
+
+      # core publishes first: the CLI's workspace:* dependency on it resolves
+      # to the new version at pack time and must already exist in the registry.
+      - name: Publish core to NPM
+        run: |
+          pnpm run build
+          TARBALL=$(pnpm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)
+          npm publish "$TARBALL" --access public
+        working-directory: ./packages/core
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+
+      - name: Publish CLI to NPM
+        run: |
+          pnpm run build
+          TARBALL=$(pnpm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)
+          npm publish "$TARBALL" --access public
+        working-directory: ./packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}

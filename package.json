@@ -9,11 +9,13 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "ci": "pnpm lint && pnpm typecheck && pnpm test"
+    "ci": "pnpm lint && pnpm typecheck && pnpm test",
+    "release": "bumpp packages/core/package.json packages/cli/package.json --commit --tag --push"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
     "@types/node": "^22.10.0",
+    "bumpp": "^10.3.0",
     "eslint": "^9.28.0",
     "tsdown": "^0.15.6",
     "typescript": "^5.9.2",
