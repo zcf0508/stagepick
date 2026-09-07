@@ -76,9 +76,11 @@ const list = defineCommand({
   },
   args: {
     ...sharedArgs,
-    json: { type: 'boolean', description: 'Machine-readable output', default: false },
-    lines: { type: 'boolean', description: 'Show changed lines with their L-numbers (for @L selectors)', default: false },
-    staged: { type: 'boolean', description: 'List index-vs-HEAD instead of worktree-vs-index', default: false },
+    // Boolean flags intentionally omit `default: false`: citty 0.1.6's proxy resolves
+    // the defined key before kebab-case fallbacks, so a default would mask `--dry-run`.
+    json: { type: 'boolean', description: 'Machine-readable JSON output' },
+    lines: { type: 'boolean', description: 'Show changed lines with their L-numbers (for @L selectors)' },
+    staged: { type: 'boolean', description: 'List index-vs-HEAD instead of worktree-vs-index' },
   },
   run({ args }) {
     guard(() => {
@@ -95,8 +97,8 @@ const list = defineCommand({
 
 const mutateArgs = {
   ...sharedArgs,
-  dryRun: { type: 'boolean', description: 'Print the patch instead of applying it', default: false },
-  json: { type: 'boolean', description: 'Machine-readable result and error output', default: false },
+  dryRun: { type: 'boolean', description: 'Print the patch instead of applying it' },
+  json: { type: 'boolean', description: 'Machine-readable JSON result and error output' },
 } as const
 
 const stage = defineCommand({
