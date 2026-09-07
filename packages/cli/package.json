@@ -1,7 +1,7 @@
 {
   "name": "stagepick",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Non-interactive git staging for AI agents and scripts: stage hunks or individual lines by stable content ids and file line numbers",
   "license": "MIT",
   "keywords": [
