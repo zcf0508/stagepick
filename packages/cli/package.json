@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@stagepick/core": "workspace:*",
+    "@toon-format/toon": "^4.1.1",
     "citty": "^0.1.6"
   }
 }

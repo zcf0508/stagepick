@@ -1,7 +1,8 @@
 import type { FileStatus, Hunk, ParsedDiff } from './parse.js'
+import { encode } from '@toon-format/toon'
 import { changedLines } from './parse.js'
 
-/** Human and machine renderings of a parsed diff. The JSON model is the agent-facing contract. */
+/** Human and machine renderings of a parsed diff. The JSON/TOON model is the agent-facing contract. */
 
 export interface JsonChangedLine {
   /** 1-based changed-line index within the hunk (the L-number used by @L selectors). */
@@ -87,6 +88,11 @@ export function toJsonModel(diff: ParsedDiff): JsonModel {
 
 export function formatJson(diff: ParsedDiff): string {
   return JSON.stringify(toJsonModel(diff), null, 2)
+}
+
+/** Same model as formatJson, encoded as TOON (https://github.com/toon-format/toon) for fewer LLM tokens. */
+export function formatToon(diff: ParsedDiff): string {
+  return encode(toJsonModel(diff))
 }
 
 function previewOf(hunk: Hunk): string {

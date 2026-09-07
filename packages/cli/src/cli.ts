@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import type { StageResult } from '@stagepick/core'
 import process from 'node:process'
-import { createStagepick, exitCodeOf, formatHuman, formatJson, StagepickError, toJsonError } from '@stagepick/core'
+import { createStagepick, exitCodeOf, formatHuman, formatJson, formatToon, StagepickError, toJsonError } from '@stagepick/core'
+import { encode } from '@toon-format/toon'
 import { defineCommand, runMain } from 'citty'
 
 const VERSION = '0.1.0'
@@ -14,13 +15,24 @@ class UsageError extends StagepickError {
   }
 }
 
-/** Run a command body, mapping typed errors onto JSON/plain output and documented exit codes. */
-function guard(fn: () => void, json: boolean): void {
+type OutputFormat = 'human' | 'json' | 'toon'
+
+function formatOf(args: { json: boolean, toon: boolean }): OutputFormat {
+  if (args.toon)
+    return 'toon'
+  if (args.json)
+    return 'json'
+  return 'human'
+}
+
+/** Run a command body, mapping typed errors onto machine/plain output and documented exit codes. */
+function guard(fn: () => void, machine: boolean): void {
   try {
     fn()
   }
   catch (error) {
-    if (json) {
+    if (machine) {
+      // Errors stay JSON in both machine modes so control flow never depends on the data format.
       process.stderr.write(`${JSON.stringify(toJsonError(error))}\n`)
     }
     else {
@@ -38,9 +50,9 @@ function printDryRun(result: StageResult): void {
     process.stdout.write(`# would git add -- ${path}\n`)
 }
 
-function printResult(verb: 'staged' | 'unstaged', result: StageResult, json: boolean): void {
-  if (json) {
-    process.stdout.write(`${JSON.stringify({
+function printResult(verb: 'staged' | 'unstaged', result: StageResult, format: OutputFormat): void {
+  if (format !== 'human') {
+    const payload = {
       ok: true,
       action: verb,
       hunks: result.hunks,
@@ -48,7 +60,8 @@ function printResult(verb: 'staged' | 'unstaged', result: StageResult, json: boo
       addedUntracked: result.addedUntracked,
       dryRun: result.dryRun,
       ...(result.dryRun ? { patch: result.patch } : {}),
-    })}\n`)
+    }
+    process.stdout.write(format === 'toon' ? `${encode(payload)}\n` : `${JSON.stringify(payload)}\n`)
     return
   }
   if (result.dryRun) {
@@ -79,19 +92,21 @@ const list = defineCommand({
     // Boolean flags intentionally omit `default: false`: citty 0.1.6's proxy resolves
     // the defined key before kebab-case fallbacks, so a default would mask `--dry-run`.
     json: { type: 'boolean', description: 'Machine-readable JSON output' },
+    toon: { type: 'boolean', description: 'Machine-readable TOON output (fewer LLM tokens; same model as --json)' },
     lines: { type: 'boolean', description: 'Show changed lines with their L-numbers (for @L selectors)' },
     staged: { type: 'boolean', description: 'List index-vs-HEAD instead of worktree-vs-index' },
   },
   run({ args }) {
+    const format = formatOf(args)
     guard(() => {
       const stagepick = createStagepick({ cwd: args.cwd })
       const diff = stagepick.list({ staged: args.staged })
       if (diff.files.length === 0) {
-        process.stdout.write(args.json ? '{"files":[]}\n' : 'no changes\n')
+        process.stdout.write(format === 'toon' ? `${encode({ files: [] })}\n` : format === 'json' ? '{"files":[]}\n' : 'no changes\n')
         return
       }
-      process.stdout.write(args.json ? `${formatJson(diff)}\n` : `${formatHuman(diff, { lines: args.lines })}\n`)
-    }, args.json)
+      process.stdout.write(format === 'toon' ? `${formatToon(diff)}\n` : format === 'json' ? `${formatJson(diff)}\n` : `${formatHuman(diff, { lines: args.lines })}\n`)
+    }, format !== 'human')
   },
 })
 
@@ -99,6 +114,7 @@ const mutateArgs = {
   ...sharedArgs,
   dryRun: { type: 'boolean', description: 'Print the patch instead of applying it' },
   json: { type: 'boolean', description: 'Machine-readable JSON result and error output' },
+  toon: { type: 'boolean', description: 'Machine-readable TOON result output (errors stay JSON)' },
 } as const
 
 const stage = defineCommand({
@@ -108,14 +124,15 @@ const stage = defineCommand({
   },
   args: mutateArgs,
   run({ args }) {
+    const format = formatOf(args)
     guard(() => {
       const selectors = args._.map(String)
       if (selectors.length === 0)
-        throw new UsageError('stage requires at least one selector (run `stagepick list --lines` to pick ids and lines)')
+        throw new UsageError('stage requires at least one selector (run `stagepick list --toon` to pick ids and lines)')
       const stagepick = createStagepick({ cwd: args.cwd })
       const result = stagepick.stage(selectors, { dryRun: args.dryRun })
-      printResult('staged', result, args.json)
-    }, args.json)
+      printResult('staged', result, format)
+    }, format !== 'human')
   },
 })
 
@@ -126,14 +143,15 @@ const unstage = defineCommand({
   },
   args: mutateArgs,
   run({ args }) {
+    const format = formatOf(args)
     guard(() => {
       const selectors = args._.map(String)
       if (selectors.length === 0)
-        throw new UsageError('unstage requires at least one selector (run `stagepick list --staged` to pick ids and lines)')
+        throw new UsageError('unstage requires at least one selector (run `stagepick list --toon --staged` to pick ids and lines)')
       const stagepick = createStagepick({ cwd: args.cwd })
       const result = stagepick.unstage(selectors, { dryRun: args.dryRun })
-      printResult('unstaged', result, args.json)
-    }, args.json)
+      printResult('unstaged', result, format)
+    }, format !== 'human')
   },
 })
 
