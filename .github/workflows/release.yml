@@ -12,19 +12,19 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      # Must come before setup-node: its package-manager-cache (default true in v5)
+      # Must come before setup-node: its package-manager-cache (default true in v7)
       # reads the packageManager field and runs `pnpm`, which fails if pnpm is not
       # installed yet.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - name: Set node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
-          node-version: 22.x
+          node-version: 22.18.x
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
 

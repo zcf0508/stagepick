@@ -2,7 +2,7 @@
   "name": "stagepick-monorepo",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "build": "pnpm -r build",
     "lint": "eslint .",
@@ -13,12 +13,12 @@
     "release": "bumpp packages/core/package.json packages/cli/package.json --commit --tag --push"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^5.4.1",
-    "@types/node": "^22.10.0",
-    "bumpp": "^10.3.0",
-    "eslint": "^9.28.0",
-    "tsdown": "^0.15.6",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "@antfu/eslint-config": "^9.5.1",
+    "@types/node": "^22.20.1",
+    "bumpp": "^12.3.0",
+    "eslint": "^10.10.0",
+    "tsdown": "^0.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.0"
   }
 }
