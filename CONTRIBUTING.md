@@ -2,9 +2,25 @@
 
 ## Setup
 
+This repository uses [mise](https://mise.jdx.dev/) to manage the development
+toolchain declared in [`mise.toml`](./mise.toml): Node.js 22 and pnpm 12.
+
+After installing mise, install the project tools and dependencies:
+
 ```bash
+mise install
 pnpm install
 ```
+
+If mise has not been activated in the current shell, run commands through mise
+explicitly:
+
+```bash
+mise exec -- pnpm install
+```
+
+`corepack` is disabled for this project, so pnpm is provided by mise rather
+than Node.js Corepack.
 
 ## Development loop
 
