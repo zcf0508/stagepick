@@ -8,6 +8,7 @@
     "paths": {
       "@stagepick/core": ["./packages/core/src/index.ts"]
     },
+    "resolveJsonModule": true,
     "types": ["node"],
     "strict": true,
     "exactOptionalPropertyTypes": true,

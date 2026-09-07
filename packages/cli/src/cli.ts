@@ -4,8 +4,9 @@ import process from 'node:process'
 import { createStagepick, exitCodeOf, formatHuman, formatJson, formatToon, StagepickError, toJsonError } from '@stagepick/core'
 import { encode } from '@toon-format/toon'
 import { defineCommand, runMain } from 'citty'
+import pkg from '../package.json' with { type: 'json' }
 
-const VERSION = '0.1.0'
+const VERSION = pkg.version
 
 class UsageError extends StagepickError {
   override readonly name = 'UsageError'
