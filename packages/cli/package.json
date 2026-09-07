@@ -4,6 +4,11 @@
   "version": "0.1.1",
   "description": "Non-interactive git staging for AI agents and scripts: stage hunks or individual lines by stable content ids and file line numbers",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zcf0508/stagepick.git",
+    "directory": "packages/cli"
+  },
   "keywords": [
     "git",
     "staging",

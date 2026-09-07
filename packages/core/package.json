@@ -4,6 +4,11 @@
   "version": "0.1.1",
   "description": "Core library for stagepick: parse git diffs, select hunks and lines, build partial-staging patches",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zcf0508/stagepick.git",
+    "directory": "packages/core"
+  },
   "keywords": [
     "git",
     "diff",
