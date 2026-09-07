@@ -17,7 +17,7 @@ and have it work on every platform.
 stagepick gives you that:
 
 ```bash
-stagepick list --json                  # inspect changes: files, hunks, stable ids, line numbers
+stagepick list --toon                  # inspect changes: files, hunks, stable ids, line numbers
 stagepick stage a1b2c3d4               # stage one hunk by content id
 stagepick stage src/app.ts:42-45       # stage the change runs touching those lines
 stagepick stage a1b2c3d4@L2            # stage one changed line inside a hunk
@@ -26,6 +26,9 @@ git diff --cached                      # verify, then commit as usual
 
 ## Features
 
+- **TOON and JSON machine output**: `list --toon` emits the same structured model as
+  `--json`, encoded as [TOON](https://github.com/toon-format/toon) — a fraction of the
+  tokens for LLM consumers
 - **Hunk-level staging** by content-addressed id (stable across re-diffs and
   staging of other hunks — loop-staging friendly)
 - **Line-level staging** two ways: new-file line ranges (`path:42-45`) that select
@@ -55,7 +58,7 @@ Requires Node.js ≥ 20 and `git` on `PATH`.
 
 ## CLI
 
-### `stagepick list [--json] [--lines] [--staged] [--cwd DIR]`
+### `stagepick list [--toon] [--json] [--lines] [--staged] [--cwd DIR]`
 
 Lists unstaged changes (worktree vs index), or staged ones with `--staged`.
 Untracked files appear as hunks-less entries.
@@ -68,8 +71,10 @@ src/app.ts (modified, 2 hunks)
   d9de73e6  @@ -27,8 +27,8 @@  +2 -2  -function fetch() {
 ```
 
-`--lines` adds the changed lines with their L-numbers; `--json` emits the full
-structured model (same numbering) — the agent-facing contract:
+`--lines` adds the changed lines with their L-numbers; `--toon` emits the full
+structured model (same numbering) encoded as
+[TOON](https://github.com/toon-format/toon) — the agent-facing contract, at a
+fraction of JSON's token cost. `--json` emits the identical model as JSON:
 
 ```jsonc
 {
@@ -92,6 +97,25 @@ structured model (same numbering) — the agent-facing contract:
   ]
 }
 ```
+
+The same model as TOON (`--toon`):
+
+```
+files[1]:
+  - path: src/app.ts
+    status: modified
+    hunks[1]:
+      - id: 5155d12f
+        idCount: 1
+        header: "@@ -5,7 +5,7 @@"
+        changedLines[2]{i,kind,text,oldLine,newLine}:
+          1,del,const retries = 3,8,null
+          2,add,const retries = 5,null,8
+```
+
+`stage` and `unstage` accept `--toon`/`--json` too, for their result payloads;
+errors always stay JSON (`{"error":{"code","message","retryable"}}`) in both
+machine modes.
 
 ### `stagepick stage <selectors...> [--dry-run] [--cwd DIR]`
 
@@ -121,7 +145,7 @@ Semantics worth knowing:
   re-diffs and staging of other hunks, and change only when the hunk's own
   +/- lines change. After staging part of a hunk, re-run `list` for fresh ids.
 - **Identical edits in one file share an id** and are selected together;
-  `list --json` reports `idCount` upfront.
+  `list --toon` reports `idCount` upfront.
 - **A change run** is a maximal block of consecutive +/- lines. `path:42-45`
   stages every run the range touches, atomically — a replacement's deletion and
   addition can only be split with `@L`, not with line ranges.
@@ -139,9 +163,9 @@ Semantics worth knowing:
 | 3 | invalid or stale selection (unknown id, untouched lines, nothing selected) — recover by re-running `list` |
 | 4 | partial failure — some writes already landed; inspect before retrying |
 
-Errors carry machine-branchable codes, not just prose: with `--json`, failures are
-reported on stderr as a structured object, so agents never parse error text for
-control flow:
+Errors carry machine-branchable codes, not just prose: in machine modes
+(`--toon` or `--json`), failures are reported on stderr as a structured JSON
+object, so agents never parse error text for control flow:
 
 ```json
 { "error": { "code": "unknown-hunk", "message": "no hunk matches id …", "retryable": true } }
@@ -170,7 +194,7 @@ sp.unstage(['a1b2c3d4@L2']) // reverse apply against the index
 
 All primitives are exported for custom pipelines: `parseDiff`, `parseSelector`,
 `resolveSelectors`, `changeRuns`, `filterHunkLines`, `planEmission`, `emitPatch`,
-`buildPatch`, `formatHuman`, `formatJson`, `toJsonModel`, `createGitRunner`.
+`buildPatch`, `formatHuman`, `formatJson`, `formatToon`, `toJsonModel`, `createGitRunner`.
 Inject your own `GitRunner` via `createStagepick({ git })` for tests or remote
 execution.
 
