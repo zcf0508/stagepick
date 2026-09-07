@@ -16,20 +16,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Must come before setup-node: its package-manager-cache (default true in v5)
+      # reads the packageManager field and runs `pnpm`, which fails if pnpm is not
+      # installed yet.
+      - uses: pnpm/action-setup@v4
+
       - name: Set node
         uses: actions/setup-node@v5
         with:
           node-version: 22.x
           registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
 
       - run: npm i -g npm@latest
 
       - run: npx changelogithub
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
-      - name: Setup
-        run: npm i -g pnpm@9
 
       - name: Install Dependencies
         run: pnpm i --frozen-lockfile
