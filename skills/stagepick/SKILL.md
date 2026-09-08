@@ -23,6 +23,9 @@ Default loop (copy this checklist for multi-commit splits):
 1. **Inspect**: `stagepick list --toon` (TOON — compact machine-readable format,
    same data model as `--json` at a fraction of the tokens; use `--json` instead
    only if you must pipe stdout into a JSON parser).
+   When only a few files are relevant in a shared worktree, limit the output with
+   Git pathspecs after `--`, for example `stagepick list --toon -- src/config.ts
+   packages/api/`; without pathspecs, all changes are listed.
    Pick selectors from the output. One call per staging round is usually enough.
 
    Reading TOON output: `files[N]:` lists each file with its status; every hunk

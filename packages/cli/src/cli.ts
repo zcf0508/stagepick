@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import type { StageResult } from '@stagepick/core'
+import { realpathSync } from 'node:fs'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { createStagepick, exitCodeOf, formatHuman, formatJson, formatToon, StagepickError, toJsonError } from '@stagepick/core'
 import { encode } from '@toon-format/toon'
-import { defineCommand, runMain } from 'citty'
+import { defineCommand, runCommand, runMain } from 'citty'
 import pkg from '../package.json' with { type: 'json' }
 
 const VERSION = pkg.version
@@ -86,7 +88,7 @@ const sharedArgs = {
 const list = defineCommand({
   meta: {
     name: 'list',
-    description: 'List changes with stable hunk ids (unstaged by default, --staged for index vs HEAD)',
+    description: 'List changes with stable hunk ids (unstaged by default, --staged for index vs HEAD; append pathspecs after -- to limit paths)',
   },
   args: {
     ...sharedArgs,
@@ -97,11 +99,13 @@ const list = defineCommand({
     lines: { type: 'boolean', description: 'Show changed lines with their L-numbers (for @L selectors)' },
     staged: { type: 'boolean', description: 'List index-vs-HEAD instead of worktree-vs-index' },
   },
-  run({ args }) {
+  run({ args, rawArgs }) {
     const format = formatOf(args)
     guard(() => {
       const stagepick = createStagepick({ cwd: args.cwd })
-      const diff = stagepick.list({ staged: args.staged })
+      const separator = rawArgs.indexOf('--')
+      const paths = separator === -1 ? [] : rawArgs.slice(separator + 1)
+      const diff = stagepick.list({ staged: args.staged, paths })
       if (diff.files.length === 0) {
         process.stdout.write(format === 'toon' ? `${encode({ files: [] })}\n` : format === 'json' ? '{"files":[]}\n' : 'no changes\n')
         return
@@ -156,7 +160,7 @@ const unstage = defineCommand({
   },
 })
 
-const main = defineCommand({
+export const main = defineCommand({
   meta: {
     name: 'stagepick',
     version: VERSION,
@@ -165,4 +169,35 @@ const main = defineCommand({
   subCommands: { list, stage, unstage },
 })
 
-runMain(main)
+export async function runCli(rawArgs: readonly string[]): Promise<void> {
+  const separator = rawArgs.indexOf('--')
+  const pathspecs = separator === -1 ? [] : rawArgs.slice(separator + 1)
+  // Citty's runMain scans all raw arguments for help before honoring `--`.
+  // Bypass only that scan when a pathspec would be mistaken for a help flag.
+  if (pathspecs.includes('--help') || pathspecs.includes('-h')) {
+    await runCommand(main, { rawArgs: [...rawArgs] })
+    return
+  }
+  await runMain(main, { rawArgs: [...rawArgs] })
+}
+
+function isMainModule(): boolean {
+  const entrypoint = process.argv[1]
+  if (entrypoint === undefined)
+    return false
+  try {
+    // npm's bin links invoke the CLI through a symlink, so compare resolved paths.
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(entrypoint)
+  }
+  catch {
+    return false
+  }
+}
+
+if (isMainModule()) {
+  runCli(process.argv.slice(2)).catch((error) => {
+    const message = error instanceof Error ? error.message : String(error)
+    process.stderr.write(`stagepick: ${message}\n`)
+    process.exitCode = 1
+  })
+}

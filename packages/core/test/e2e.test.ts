@@ -134,6 +134,30 @@ describe('untracked files', () => {
   })
 })
 
+describe('list path filters', () => {
+  it('lists only the requested tracked and untracked paths', () => {
+    repo = createRepo({ 'a.txt': 'a\n', 'b.txt': 'b\n' })
+    repo.write('a.txt', 'A\n')
+    repo.write('b.txt', 'B\n')
+    repo.write('new.txt', 'new\n')
+    const sp = createStagepick({ cwd: repo.dir })
+
+    expect(sp.list().files.map(file => file.path)).toEqual(['a.txt', 'b.txt', 'new.txt'])
+    expect(sp.list({ paths: ['a.txt', 'new.txt'] }).files.map(file => file.path)).toEqual(['a.txt', 'new.txt'])
+  })
+
+  it('applies path filters to staged changes too', () => {
+    repo = createRepo({ 'a.txt': 'a\n', 'b.txt': 'b\n' })
+    repo.write('a.txt', 'A\n')
+    repo.write('b.txt', 'B\n')
+    const sp = createStagepick({ cwd: repo.dir })
+    sp.stage(['a.txt'])
+
+    expect(sp.list({ staged: true, paths: ['a.txt'] }).files.map(file => file.path)).toEqual(['a.txt'])
+    expect(sp.list({ staged: true, paths: ['b.txt'] }).files).toEqual([])
+  })
+})
+
 describe('dry run', () => {
   it('returns the patch without touching the index', () => {
     repo.write('f.txt', anchorFixture().after)

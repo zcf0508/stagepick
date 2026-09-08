@@ -9,7 +9,7 @@ import { StagepickError } from './errors.js'
 
 export interface GitRunner {
   /** `git diff` (worktree vs index) or `git diff --cached` (index vs HEAD), decoded as UTF-8. */
-  diff: (staged: boolean) => string
+  diff: (staged: boolean, paths?: readonly string[]) => string
   /** Apply a patch to the index (`git apply --cached`), feeding the patch on stdin. */
   applyToIndex: (patch: string, reverse: boolean) => void
   /** `git add -- <paths>` (stage whole files, e.g. untracked). */
@@ -17,7 +17,7 @@ export interface GitRunner {
   /** `git add -N -- <paths>` (intent-to-add so new files appear in `git diff`). */
   addIntentToAdd: (paths: string[]) => void
   /** Untracked, non-ignored paths, repo-relative POSIX style. */
-  untracked: () => string[]
+  untracked: (paths?: readonly string[]) => string[]
 }
 
 export class GitError extends StagepickError {
@@ -62,10 +62,12 @@ function run(cwd: string, args: string[], input?: string): string {
 
 export function createGitRunner(cwd: string): GitRunner {
   return {
-    diff(staged) {
+    diff(staged, paths = []) {
       const args = ['-c', 'core.quotepath=false', 'diff', '--no-color', '--no-ext-diff', '--no-textconv']
       if (staged)
         args.push('--cached')
+      if (paths.length > 0)
+        args.push('--', ...paths)
       return run(cwd, args)
     },
     applyToIndex(patch, reverse) {
@@ -83,8 +85,11 @@ export function createGitRunner(cwd: string): GitRunner {
       if (paths.length > 0)
         run(cwd, ['add', '-N', '--', ...paths])
     },
-    untracked() {
-      const out = run(cwd, ['-c', 'core.quotepath=false', 'ls-files', '--others', '--exclude-standard'])
+    untracked(paths = []) {
+      const args = ['-c', 'core.quotepath=false', 'ls-files', '--others', '--exclude-standard']
+      if (paths.length > 0)
+        args.push('--', ...paths)
+      const out = run(cwd, args)
       return out.split('\n').filter(line => line.length > 0)
     },
   }
