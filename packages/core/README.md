@@ -8,7 +8,7 @@ the `stagepick` CLI, made for embedding into agent runtimes.
 import { createStagepick } from '@stagepick/core'
 
 const sp = createStagepick({ cwd: process.cwd() })
-const diff = sp.list()
+const diff = sp.list({ paths: ['src/app.ts'] })
 const id = diff.files[0]!.hunks[0]!.id
 sp.stage([id]) // or ['src/app.ts:42-45'], ['a1b2c3d4@L2'], ...
 ```

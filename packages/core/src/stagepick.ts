@@ -25,6 +25,8 @@ export interface StagepickOptions {
 export interface ListOptions {
   /** List index-vs-HEAD (staged) changes instead of worktree-vs-index. */
   staged?: boolean
+  /** Limit the list to Git pathspecs. An empty or omitted list includes all paths. */
+  paths?: readonly string[]
 }
 
 export interface StageOptions {
@@ -74,9 +76,10 @@ export function createStagepick(options: StagepickOptions = {}): Stagepick {
 
   function list(listOptions: ListOptions = {}): ParsedDiff {
     const staged = listOptions.staged ?? false
-    const diff = parseDiff(git.diff(staged))
+    const paths = listOptions.paths ?? []
+    const diff = parseDiff(git.diff(staged, paths))
     if (!staged)
-      diff.files.push(...untrackedEntries(git.untracked()))
+      diff.files.push(...untrackedEntries(git.untracked(paths)))
     return diff
   }
 

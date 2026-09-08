@@ -18,6 +18,7 @@ stagepick gives you that:
 
 ```bash
 stagepick list --toon                  # inspect changes: files, hunks, stable ids, line numbers
+stagepick list --toon -- src/app.ts    # inspect only selected paths (Git pathspecs)
 stagepick stage a1b2c3d4               # stage one hunk by content id
 stagepick stage src/app.ts:42-45       # stage the change runs touching those lines
 stagepick stage a1b2c3d4@L2            # stage one changed line inside a hunk
@@ -58,10 +59,13 @@ Requires Node.js ≥ 20 and `git` on `PATH`.
 
 ## CLI
 
-### `stagepick list [--toon] [--json] [--lines] [--staged] [--cwd DIR]`
+### `stagepick list [--toon] [--json] [--lines] [--staged] [--cwd DIR] [-- PATHSPEC...]`
 
 Lists unstaged changes (worktree vs index), or staged ones with `--staged`.
-Untracked files appear as hunks-less entries.
+Untracked files appear as hunks-less entries. Append one or more Git pathspecs
+after `--` to limit the output to selected files or directories; the same
+filter applies to tracked and untracked files. Without pathspecs, all changes
+are listed.
 
 Human output (compact, one line per hunk):
 
@@ -182,7 +186,7 @@ import { createStagepick } from '@stagepick/core'
 
 const sp = createStagepick({ cwd: process.cwd() })
 
-const diff = sp.list() // ParsedDiff, untracked included
+const diff = sp.list({ paths: ['src/app.ts'] }) // ParsedDiff, filtered to one path
 const id = diff.files[0]!.hunks[0]!.id
 
 const result = sp.stage([id], { dryRun: true })
